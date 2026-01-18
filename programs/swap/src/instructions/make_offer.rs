@@ -28,6 +28,7 @@ pub struct MakeOffer<'info> {
         init,
         payer = maker,
         space = ANCHOR_DISCRIMINATOR + Offer::INIT_SPACE,
+        // id: the id of the offer
         seeds = [b"offer", maker.key().as_ref(), id.to_le_bytes().as_ref()],
         bump,
     )]
@@ -37,7 +38,7 @@ pub struct MakeOffer<'info> {
         init,
         payer = maker,
         associated_token::mint = token_mint_a,
-        associated_token::authority = offer,
+        associated_token::authority = offer, //the offer account is the authority of the vault
         associated_token::token_program = token_program,
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
@@ -50,12 +51,12 @@ pub struct MakeOffer<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-pub fn send_offer_tokens_to_vault(ctx: Context<MakeOffer>, token_a_offer_amount: u64) -> Result<()> {
+pub fn send_offer_tokens_to_vault(ctx: &Context<MakeOffer>, token_a_offered_amount: u64) -> Result<()> {
     
     transfer_tokens(
         &ctx.accounts.maker_token_account_a,
         &ctx.accounts.vault,
-        &token_a_offer_amount,
+        &token_a_offered_amount,
         &ctx.accounts.token_mint_a,
         &ctx.accounts.maker,
         &ctx.accounts.token_program,

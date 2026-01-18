@@ -3,6 +3,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface, TransferCh
 
 
 pub fn transfer_tokens<'info> (
+    //InterfaceAccount makes our program work on both SPL token programs and token2022 programs
     from: &InterfaceAccount<'info, TokenAccount>,
     to: &InterfaceAccount<'info, TokenAccount>,
     amount: &u64,
@@ -16,8 +17,10 @@ pub fn transfer_tokens<'info> (
         authority: authority.to_account_info(),
         mint: mint.to_account_info(),
     };
-    let cpi_context: CpiContext<'_, '_, '_, '_, TransferChecked<'_>> = CpiContext::new(token_program.to_account_info(), transfer_accounts_options);
-    transfer_checked(cpi_context, *amount, mint.decimals);
+    let cpi_context: CpiContext<'_, '_, '_, '_, TransferChecked<'_>> = CpiContext::new
+    (token_program.to_account_info(),
+    transfer_accounts_options);
+    transfer_checked(cpi_context, *amount, mint.decimals)?;
 
     Ok(())
 }
