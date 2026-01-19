@@ -1,5 +1,13 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
+use anchor_spl::token_interface::{
+    Mint,
+    TokenAccount,
+    TokenInterface,
+    TransferChecked,
+    transfer_checked,
+    CloseAccount,
+    close_account,
+};
 use anchor_spl::associated_token::AssociatedToken;
 
 use crate::{Offer, ANCHOR_DISCRIMINATOR, transfer_tokens};
@@ -70,3 +78,58 @@ pub struct AcceptOffer<'info> {
 
 }
 
+pub fn send_wanted_tokens_to_maker(ctx: &Context<AcceptOffer>) -> Result<()> {
+    transfer_tokens(
+        &ctx.accounts.taker_token_account_b,
+        &ctx.accounts.maker_token_account_b,
+        &ctx.accounts.offer.token_b_wanted_amount,
+        &ctx.accounts.token_mint_b,
+        &ctx.accounts.taker,
+        &ctx.accounts.token_program,
+    )?;
+    Ok(())
+}
+
+// this includes a PDA transfer, so we cannot use the transfer_tokens function
+pub fn withdraw_and_close_vault(ctx: Context<AcceptOffer>) -> Result<()> {
+    let seeds = &[
+        b"offer",
+        ctx.accounts.maker.to_account_info().key.as_ref(), //ctx.accounts.maker.key().as_ref() why is this different?
+        &ctx.accounts.offer.id.to_le_bytes()[..], // why to_bytes()[..]?
+        &[ctx.accounts.offer.bump],
+    ];
+
+    let signer_seeds = [&seeds[..]]; // what does [..] mean?
+
+    let accounts = TransferChecked {
+        from: ctx.accounts.vault.to_account_info(),
+        to: ctx.accounts.taker_token_account_a.to_account_info(),
+        authority: ctx.accounts.offer.to_account_info(),
+        mint: ctx.accounts.token_mint_a.to_account_info(),
+    };
+
+    let cpi_context: CpiContext<'_, '_, '_, '_, TransferChecked<'_>> = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        accounts,
+        &signer_seeds,
+    );
+
+    transfer_checked(cpi_context, ctx.accounts.vault.amount, ctx.accounts.token_mint_a.decimals)?;
+
+    //transfer complete, now close the vault
+
+    let accounts = CloseAccount {
+        account: ctx.accounts.vault.to_account_info(),
+        destination: ctx.accounts.taker.to_account_info(),
+        authority: ctx.accounts.offer.to_account_info(),
+    };
+
+    let cpi_context: CpiContext<'_, '_, '_, '_, CloseAccount<'_>> = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        accounts,
+        &signer_seeds,
+    );
+
+    close_account(cpi_context)?;
+    Ok(())
+}

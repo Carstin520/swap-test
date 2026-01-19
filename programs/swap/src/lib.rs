@@ -23,9 +23,9 @@ pub mod swap {
         instructions::make_offer::send_offer_tokens_to_vault(&ctx, token_a_offered_amount)?;
         instructions::make_offer::save_offer(ctx, id, token_b_wanted_amount)
     }
-}
 
-pub fn accept_offer(ctx: Context<AcceptOffer>) -> Result<()> {
-    instructions::accept_offer::accept_offer(ctx)?;
-    instructions::accept_offer::withdraw_and_close_vault(ctx)
+    pub fn accept_offer(ctx: Context<AcceptOffer>) -> Result<()> {
+        instructions::accept_offer::send_wanted_tokens_to_maker(&ctx)?;
+        instructions::accept_offer::withdraw_and_close_vault(ctx)
+    }
 }
